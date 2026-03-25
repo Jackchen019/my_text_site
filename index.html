@@ -11,9 +11,8 @@
         body {
             padding: 20px;
             max-width: 1400px;
-            margin: 0 auto; /* 页面整体居中 */
+            margin: 0 auto;
         }
-        /* 可编辑标题样式 */
         .editable-title {
             text-align: center;
             margin-bottom: 20px;
@@ -22,11 +21,8 @@
             border-bottom: 1px dashed #ccc;
         }
         .editable-title:hover {
-            color: #2c3e50;
             background-color: #f8f9fa;
         }
-
-        /* 样式控制栏 */
         .style-controls {
             display: flex;
             align-items: center;
@@ -36,54 +32,44 @@
             border-radius: 8px;
             margin: 0 auto 20px;
             max-width: 1200px;
-            flex-wrap: wrap; /* 适配小屏幕 */
-        }
-        .style-controls label {
-            font-size: 14px;
-            color: #333;
+            flex-wrap: wrap;
         }
         .style-controls select, .style-controls input[type="color"] {
             padding: 6px 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            font-size: 14px;
             cursor: pointer;
         }
         .style-controls input[type="color"] {
-            padding: 0;
             width: 40px;
             height: 30px;
             border: none;
         }
-
-        /* 文本框容器（适配文本框+删除按钮） */
         .text-box-wrapper {
             display: flex;
             align-items: flex-start;
             width: 100%;
             max-width: 1200px;
             margin: 15px auto;
-            gap: 10px; /* 替换margin-left，更现代 */
+            gap: 10px;
         }
-        /* 自适应+手动缩放文本框样式 */
         .text-box {
-            flex: 1; /* 随容器自适应 */
-            width: 100%; /* 基础宽度自适应 */
-            min-width: 200px; /* 最小宽度，防止缩得太窄 */
-            min-height: 150px; /* 最小高度 */
-            max-width: calc(100% - 100px); /* 预留删除按钮空间 */
+            flex: 1;
+            width: 100%;
+            min-width: 200px;
+            min-height: 150px;
+            max-width: calc(100% - 100px);
             padding: 15px;
             font-size: 16px;
             border: 2px solid #ccc;
             border-radius: 8px;
-            resize: both; /* 同时支持横向/纵向手动缩放 */
+            resize: both;
             transition: border-color 0.2s;
         }
         .text-box:focus {
             outline: none;
-            border-color: #007bff; /* 聚焦高亮 */
+            border-color: #007bff;
         }
-        /* 删除按钮样式 */
         .delete-btn {
             padding: 10px 15px;
             font-size: 16px;
@@ -93,12 +79,11 @@
             border: none;
             border-radius: 8px;
             white-space: nowrap;
-            flex-shrink: 0; /* 按钮不收缩 */
+            flex-shrink: 0;
         }
         .delete-btn:hover {
             background-color: #bb2d3b;
         }
-        /* 新增按钮样式 */
         .add-btn {
             display: block;
             margin: 20px auto;
@@ -116,10 +101,8 @@
     </style>
 </head>
 <body>
-    <!-- 可编辑的大标题 -->
-    <h2 class="editable-title" contenteditable="true" spellcheck="false">永久文本编辑框</h2>
+    <h2 class="editable-title" id="mainTitle" contenteditable="true" spellcheck="false">永久文本编辑框</h2>
 
-    <!-- 样式控制栏 -->
     <div class="style-controls">
         <label>字号：</label>
         <select id="fontSizeSelect">
@@ -143,134 +126,149 @@
         <input type="color" id="fontColorPicker" value="#000000">
     </div>
 
-    <!-- 初始文本框容器 -->
-    <div class="text-box-wrapper">
-        <textarea class="text-box" placeholder="在这里编辑文字..."></textarea>
-        <button class="delete-btn" onclick="deleteTextBox(this)">删除文本框</button>
+    <div id="textBoxContainer">
+        <div class="text-box-wrapper">
+            <textarea class="text-box" placeholder="在这里编辑文字..."></textarea>
+            <button class="delete-btn" onclick="deleteTextBox(this)">删除文本框</button>
+        </div>
     </div>
 
-    <!-- 新增按钮 -->
     <button class="add-btn" onclick="addTextBox()">新增文本框</button>
 
     <script>
-        // 跟踪当前激活的文本框（默认选中第一个）
         let activeTextBox = document.querySelector('.text-box');
+        const container = document.getElementById('textBoxContainer');
+        const title = document.getElementById('mainTitle');
 
-        // 初始化：给所有文本框绑定聚焦事件
-        document.querySelectorAll('.text-box').forEach(box => {
-            box.addEventListener('focus', function() {
-                activeTextBox = this;
-                // 同步样式选择器到当前文本框的样式
+        // 初始化：加载保存的数据
+        window.addEventListener('load', loadSavedData);
+        // 标题编辑自动保存
+        title.addEventListener('input', saveAllData);
+
+        // 初始化文本框事件
+        function initTextBoxEvents(box) {
+            box.addEventListener('focus', () => {
+                activeTextBox = box;
                 syncStyleSelectors();
             });
-        });
+            box.addEventListener('input', saveAllData);
+        }
+        document.querySelectorAll('.text-box').forEach(initTextBoxEvents);
 
-        // 同步样式选择器到当前激活文本框的样式
+        // 样式同步
         function syncStyleSelectors() {
-            const fontSize = window.getComputedStyle(activeTextBox).fontSize;
-            const fontFamily = window.getComputedStyle(activeTextBox).fontFamily;
-            const color = window.getComputedStyle(activeTextBox).color;
-            
-            // 处理字号（转换为px格式）
-            const fontSizeSelect = document.getElementById('fontSizeSelect');
-            Array.from(fontSizeSelect.options).forEach(option => {
-                if (option.value === fontSize) {
-                    option.selected = true;
-                }
-            });
-
-            // 处理字体（简化匹配）
-            const fontFamilySelect = document.getElementById('fontFamilySelect');
-            Array.from(fontFamilySelect.options).forEach(option => {
-                if (fontFamily.includes(option.value.split(',')[0])) {
-                    option.selected = true;
-                }
-            });
-
-            // 处理颜色（转换为十六进制）
-            const fontColorPicker = document.getElementById('fontColorPicker');
-            fontColorPicker.value = rgbToHex(color);
+            const style = window.getComputedStyle(activeTextBox);
+            document.getElementById('fontSizeSelect').value = style.fontSize;
+            document.getElementById('fontColorPicker').value = rgbToHex(style.color);
         }
-
-        // RGB转十六进制（适配颜色选择器）
         function rgbToHex(rgb) {
-            const rgbMatch = rgb.match(/\d+/g);
-            if (!rgbMatch) return '#000000';
-            const r = parseInt(rgbMatch[0]), g = parseInt(rgbMatch[1]), b = parseInt(rgbMatch[2]);
-            return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            const [r,g,b] = rgb.match(/\d+/g);
+            return "#" + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
         }
 
-        // 绑定样式变更事件
-        document.getElementById('fontSizeSelect').addEventListener('change', function() {
-            activeTextBox.style.fontSize = this.value;
+        // 样式修改
+        document.getElementById('fontSizeSelect').addEventListener('change', e => {
+            activeTextBox.style.fontSize = e.target.value;
+            saveAllData();
+        });
+        document.getElementById('fontFamilySelect').addEventListener('change', e => {
+            activeTextBox.style.fontFamily = e.target.value;
+            saveAllData();
+        });
+        document.getElementById('fontColorPicker').addEventListener('input', e => {
+            activeTextBox.style.color = e.target.value;
+            saveAllData();
         });
 
-        document.getElementById('fontFamilySelect').addEventListener('change', function() {
-            activeTextBox.style.fontFamily = this.value;
-        });
-
-        document.getElementById('fontColorPicker').addEventListener('input', function() {
-            activeTextBox.style.color = this.value;
-        });
-
-        // 新增文本框函数
+        // 新增文本框
         function addTextBox() {
-            // 创建文本框容器
             const wrapper = document.createElement('div');
             wrapper.className = 'text-box-wrapper';
-
-            // 创建文本框（继承默认样式）
+            
             const newBox = document.createElement('textarea');
             newBox.className = 'text-box';
-            newBox.placeholder = '新文本框，在这里编辑...';
+            newBox.placeholder = '新文本框...';
             newBox.style.fontSize = document.getElementById('fontSizeSelect').value;
             newBox.style.fontFamily = document.getElementById('fontFamilySelect').value;
             newBox.style.color = document.getElementById('fontColorPicker').value;
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = 'delete-btn';
+            delBtn.textContent = '删除文本框';
+            delBtn.onclick = () => deleteTextBox(delBtn);
 
-            // 绑定聚焦事件
-            newBox.addEventListener('focus', function() {
-                activeTextBox = this;
-                syncStyleSelectors();
-            });
-
-            // 创建删除按钮
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.innerText = '删除文本框';
-            deleteBtn.onclick = function() {
-                deleteTextBox(this);
-            };
-
-            // 组装容器
-            wrapper.appendChild(newBox);
-            wrapper.appendChild(deleteBtn);
-
-            // 插入到新增按钮上方
-            const addBtn = document.querySelector('.add-btn');
-            document.body.insertBefore(wrapper, addBtn);
-
-            // 新文本框自动聚焦
+            wrapper.append(newBox, delBtn);
+            container.appendChild(wrapper);
+            initTextBoxEvents(newBox);
             newBox.focus();
+            saveAllData();
         }
 
-        // 删除文本框函数
+        // 删除文本框
         function deleteTextBox(btn) {
-            // 获取当前文本框容器
             const wrapper = btn.closest('.text-box-wrapper');
-            // 至少保留一个文本框
-            const allWrappers = document.querySelectorAll('.text-box-wrapper');
-            if (allWrappers.length > 1) {
-                // 如果删除的是当前激活的文本框，切换到第一个文本框
-                if (wrapper.querySelector('.text-box') === activeTextBox) {
-                    activeTextBox = document.querySelectorAll('.text-box')[0];
-                    syncStyleSelectors();
-                }
+            const total = container.querySelectorAll('.text-box-wrapper').length;
+            if(total > 1){
                 wrapper.remove();
-            } else {
-                alert('至少需要保留一个文本框！');
-                // 清空当前文本框内容（可选）
+                saveAllData();
+            }else{
+                alert('至少保留一个文本框！');
                 wrapper.querySelector('.text-box').value = '';
+                saveAllData();
             }
+        }
+
+        // ============== 核心：自动保存/读取功能 ==============
+        function saveAllData() {
+            const data = {
+                title: title.innerText,
+                boxes: []
+            };
+            container.querySelectorAll('.text-box-wrapper').forEach(wrap => {
+                const box = wrap.querySelector('.text-box');
+                data.boxes.push({
+                    content: box.value,
+                    fontSize: box.style.fontSize,
+                    fontFamily: box.style.fontFamily,
+                    color: box.style.color
+                });
+            });
+            localStorage.setItem('myTextSiteData', JSON.stringify(data));
+        }
+
+        function loadSavedData() {
+            const saved = localStorage.getItem('myTextSiteData');
+            if(!saved) return;
+            const data = JSON.parse(saved);
+            
+            // 恢复标题
+            title.innerText = data.title;
+            
+            // 清空默认框
+            container.innerHTML = '';
+            
+            // 恢复所有文本框
+            data.boxes.forEach(boxData => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'text-box-wrapper';
+                
+                const textarea = document.createElement('textarea');
+                textarea.className = 'text-box';
+                textarea.value = boxData.content;
+                textarea.style.fontSize = boxData.fontSize || '16px';
+                textarea.style.fontFamily = boxData.fontFamily || 'Microsoft YaHei, sans-serif';
+                textarea.style.color = boxData.color || '#000000';
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.textContent = '删除文本框';
+                delBtn.onclick = () => deleteTextBox(delBtn);
+
+                wrapper.append(textarea, delBtn);
+                container.appendChild(wrapper);
+                initTextBoxEvents(textarea);
+            });
+            activeTextBox = container.querySelector('.text-box');
         }
     </script>
 </body>
